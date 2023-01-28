@@ -1,0 +1,30 @@
+<div class="site-top-nav-wrapper site-l-wrapper ">
+  <nav class="site-header__nav">
+    <ul class="site-header__nav-list">
+      <% if (tokenset && tokenset.access_token) { %>
+        <!-- <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" href="/claims">View Claims</a>
+        </li> -->
+        <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" target="_blank" href="/status">Status</a>
+        </li>
+        <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" target="_blank" href="/disability_rating">Disability Rating</a>
+        </li>
+        <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" target="_blank" href="/service_history">Service
+            History</a>
+        </li>
+        <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" target="_blank" href="/userdetails">User Details</a>
+        </li>
+        <!-- <li class="site-header__nav-item">
+          <a class="site-header__nav-item__link" href="/coming_soon">Benefits Intake</a>
+        </li>
+        <li class="site-header__nav-item">
+          <a class='site-header__nav-item__link' href="coming_soon">Power of Attorney </a>
+        </li> -->
+        <% } %>
+    </ul>
+  </nav>
+</div>

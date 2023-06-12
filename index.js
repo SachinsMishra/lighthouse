@@ -1,14 +1,15 @@
-require('dotenv').config();
+require('dotenv').config({ path: ".env.sample" });
 const axios = require('axios');
 const express = require('express');
 const session = require('express-session');
 const { Issuer, Strategy } = require('openid-client');
 const passport = require('passport');
 const https = require('https');
-const env = 'sandbox';
+const sqlite3 = require('sqlite3').verbose();
+const env = process.env.ENVIRONMENT;
 const ROOT_URL = `https://${env}-api.va.gov/oauth2/.well-known/openid-configuration`;
-const client_id = "0oakletvtp4y5Nd922p7";//process.env.CLIENT_ID;
-const client_secret = "TZOSisTaTqUFqjjTVEKET4jTiIskJ2AJbn0GO4g7";//process.env.CLIENT_SECRET;
+const client_id = process.env.CLIENT_ID;
+const client_secret = process.env.CLIENT_SECRET;
 var bodyParser = require('body-parser');
 
 const createClient = async () => {
@@ -37,7 +38,7 @@ const configurePassport = (client) => {
     {
       client,
       params: {
-        scope: 'profile openid offline_access disability_rating.read service_history.read veteran_status.read claim.read',
+        scope: 'openid profile veteran_status.read service_history.read claim.read',
       },
     }, (tokenset, userinfo, done) => {
       done(null, { userinfo, tokenset });
@@ -55,53 +56,12 @@ const userDetails = async (req, res, next) => {
   }
 }
 
-const getJWT = async (req, res, next) => {
-  if (req.session && req.session.passport && req.session.passport.user) {
-    res.json({ jwt: `${req.session.passport.user.tokenset.access_token}` });
-    next();
-  } else {
-    res.json(null); // Redirect the user to login if they are not
-    next();
-  }
-};
-
 const verifyVeteranStatus = async (req, res, next) => {
   if (req.session && req.session.passport && req.session.passport.user) {
     const veteranStatus = await new Promise((resolve, reject) => {
-      https.get(
-        `https://${env}-api.va.gov/services/veteran_verification/v1/status`,
-        { headers: { 'Authorization': `Bearer ${req.session.passport.user.tokenset.access_token}` } },
-        (res) => {
-          let rawData = '';
-          if (res.statusCode !== 200) {
-            reject(new Error('Request Failed'));
-          }
-          res.setEncoding('utf-8');
-          res.on('data', (chunk) => { rawData += chunk; });
-          res.on('end', () => {
-            try {
-              const parsedOutput = JSON.parse(rawData);
-              resolve(parsedOutput);
-            } catch (err) {
-              reject(err);
-            }
-          });
-        }
-      ).on('error', reject);
-    });
-    res.json({ veteranStatus: veteranStatus });
-    next();
-  } else {
-    res.redirect('/auth'); // Redirect the user to login if they are not
-    next();
-  }
-};
 
-const verifyDisabilityRating = async (req, res, next) => {
-  if (req.session && req.session.passport && req.session.passport.user) {
-    const veteranDisabilityRating = await new Promise((resolve, reject) => {
       https.get(
-        `https://${env}-api.va.gov/services/veteran_verification/v1/disability_rating`,
+        `https://${env}-api.va.gov/services/veteran_verification/v0/status`,
         { headers: { 'Authorization': `Bearer ${req.session.passport.user.tokenset.access_token}` } },
         (res) => {
           let rawData = '';
@@ -113,7 +73,7 @@ const verifyDisabilityRating = async (req, res, next) => {
           res.on('end', () => {
             try {
               const parsedOutput = JSON.parse(rawData);
-              resolve(parsedOutput);
+              resolve(parsedOutput.data.attributes.veteran_status);
             } catch (err) {
               reject(err);
             }
@@ -121,39 +81,7 @@ const verifyDisabilityRating = async (req, res, next) => {
         }
       ).on('error', reject);
     });
-    res.json({ veterandisabilityRating: veteranDisabilityRating });
-    next();
-  } else {
-    res.redirect('/auth'); // Redirect the user to login if they are not
-    next();
-  }
-};
-
-const verifyServiceHistory = async (req, res, next) => {
-  if (req.session && req.session.passport && req.session.passport.user) {
-    const verifyServiceHistory = await new Promise((resolve, reject) => {
-      https.get(
-        `https://${env}-api.va.gov/services/veteran_verification/v1/service_history`,
-        { headers: { 'Authorization': `Bearer ${req.session.passport.user.tokenset.access_token}` } },
-        (res) => {
-          let rawData = '';
-          if (res.statusCode !== 200) {
-            reject(new Error('Request Failed'));
-          }
-          res.setEncoding('utf-8');
-          res.on('data', (chunk) => { rawData += chunk; });
-          res.on('end', () => {
-            try {
-              const parsedOutput = JSON.parse(rawData);
-              resolve(parsedOutput);
-            } catch (err) {
-              reject(err);
-            }
-          });
-        }
-      ).on('error', reject);
-    });
-    res.json({ verifyServiceHistory: verifyServiceHistory });
+    res.render('status', { tokenset: req.session.passport.user.tokenset, veteranStatus: veteranStatus, user: req.session.passport.user });
     next();
   } else {
     res.redirect('/auth'); // Redirect the user to login if they are not
@@ -166,7 +94,7 @@ const wrapAuth = async (req, res, next) => {
   if (req.query.error) {
     return next(req.query.error_description);
   }
-  passport.authenticate("oidc", { successRedirect: "/", failureRedirect: "/" })(req, res, next);
+  passport.authenticate("oidc", { successRedirect: "/status", failureRedirect: "/" })(req, res, next);
 };
 
 const loggedIn = (req) => {
@@ -177,12 +105,12 @@ const startApp = (client) => {
   const app = express();
   const port = 8080;
   const secret = 'My Super Secret Secret'
-  // let db = new sqlite3.Database('./db/lighthouse.sqlite', (err) => {
-  //   if (err) {
-  //     return console.error(err.message);
-  //   }
-  //   console.log('Connected to SQlite database.');
-  // });
+  let db = new sqlite3.Database('./db/lighthouse.sqlite', (err) => {
+    if (err) {
+      return console.error(err.message);
+    }
+    console.log('Connected to SQlite database.');
+  });
 
   app.set('view engine', 'ejs')
   app.use(require('express-session')({ secret: 'keyboard cat', resave: true, saveUninitialized: true }));
@@ -204,11 +132,35 @@ const startApp = (client) => {
     }
   });
 
+  app.get('/status', verifyVeteranStatus);
+  app.get('/userdetails', userDetails);
+  app.get('/coming_soon', (req, res) => {
+    res.render('coming_soon', { tokenset: {} })
+  })
+
+  app.get('/home', (req, res) => {
+    if (loggedIn(req)) {
+      const users = [];
+      const sql = `SELECT id, first_name, last_name, social_security_number, birth_date FROM veterans`;
+      const tokenset = req.session.passport.user.tokenset;
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          throw err;
+        }
+        rows.forEach((row) => {
+          users.push(row)
+        });
+        res.render('home', { tokenset, users });
+      });
+
+    } else {
+      res.redirect('/auth'); // Redirect the user to login if they are not
+    }
+  });
 
   app.get('/claims', (req, res) => {
     if (loggedIn(req)) {
       const tokenset = req.session.passport.user.tokenset;
-      res.write(`Bearer ${tokenset.access_token}`)
       axios.get(`https://${env}-api.va.gov/services/claims/v1/claims`, {
         headers: {
           Authorization: `Bearer ${tokenset.access_token}`
@@ -224,20 +176,101 @@ const startApp = (client) => {
       res.redirect('/auth'); // Redirect the user to login if they are not
     }
   });
-  app.get('/status', verifyVeteranStatus);
-  app.get('/disability_rating', verifyDisabilityRating);
-  app.get('/service_history', verifyServiceHistory);
-  app.get('/userdetails', userDetails);
-  app.get('/logout', (req, res) => {
-    req.logout();
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid');
-      res.redirect('/');
+
+  app.get('/claims/for/:id', (req, res) => {
+    if (req.session && req.session.passport && req.session.passport.user) {
+      const id = req.params.id;
+      const users = [];
+      const sql = `SELECT id, first_name, last_name, social_security_number, birth_date FROM veterans where id = ?`;
+      const tokenset = req.session.passport.user.tokenset;
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          throw err;
+        }
+        axios.get(`https://${env}-api.va.gov/services/claims/v1/claims`, {
+          headers: {
+            Authorization: `Bearer ${tokenset.access_token}`,
+            'X-VA-First-Name': row.first_name,
+            'X-VA-Last-Name': row.last_name,
+            'X-VA-Birth-Date': row.birth_date,
+            'X-VA-SSN': row.social_security_number
+          }
+        })
+          .then(response => {
+            res.render('claims', { user: `${row.first_name} ${row.last_name}`, claims: response.data.data, tokenset: tokenset });
+          })
+          .catch(error => {
+            console.log(error)
+            console.log('Iam error')
+          })
+      });
+
+    } else {
+      res.redirect('/auth'); // Redirect the user to login if they are not
+    }
+  });
+
+  const serviceHistory = async (req, res, next) => {
+    if (req.session && req.session.passport && req.session.passport.user) {
+      const veteranStatus = await new Promise((resolve, reject) => {
+        https.get(
+          `https://${env}-api.va.gov/services/veteran_verification/v2/service_history`,
+          { headers: { 'Authorization': `Bearer ${req.session.passport.user.tokenset.access_token}` } },
+          (res) => {
+            let rawData = '';
+            if (res.statusCode !== 200) {
+              reject(new Error('Request Failed'));
+            }
+            res.setEncoding('utf-8');
+            res.on('data', (chunk) => { rawData += chunk; });
+            res.on('end', () => {
+              try {
+                const parsedOutput = JSON.parse(rawData);
+                resolve(parsedOutput);
+              } catch (err) {
+                reject(err);
+              }
+            });
+          }
+        ).on('error', reject);
+      });
+      res.render('service_history', { tokenset: req.session.passport.user.tokenset, veteranStatus: veteranStatus, user: req.session.passport.user });
+      next();
+    } else {
+      res.redirect('/auth'); // Redirect the user to login if they are not
+      next();
+    }
+  };
+  app.get('/service_history', serviceHistory);
+
+  app.post('/users', (req, res) => {
+    const first_name = req.body.first_name;
+    const last_name = req.body.last_name;
+    const social_security_number = req.body.ssn;
+    const birth_date = req.body.birth_date;
+    console.log(first_name);
+    console.log(last_name);
+    console.log(social_security_number);
+    console.log(birth_date);
+    db.run('INSERT INTO veterans(first_name, last_name, social_security_number, birth_date) VALUES(?, ?, ?, ?)', [first_name, last_name, social_security_number, birth_date], (err) => {
+      if (err) {
+        return console.log(err.message);
+      }
+
+      res.redirect('/home');
     })
   });
+
   app.get('/auth', passport.authenticate('oidc'));
   app.get('/auth/cb', wrapAuth);
-  app.get('/jwt', getJWT);
+  app.get('/tokenset', (req, res) => {
+    if (req.session && req.session.passport && req.session.passport.user) {
+      const tokenset = req.session.passport.user.tokenset;
+      res.send({ tokenset: tokenset });
+    } else {
+      res.send({ tokenset: null })// Redirect the user to login if they are not
+    }
+  });
 
   app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 }

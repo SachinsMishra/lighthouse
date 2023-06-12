@@ -1,0 +1,126 @@
+<html>
+<%- include('./partials/head') %>
+
+  <body>
+    <%- include('./partials/header') %>
+      <main>
+        <div class="large-screen:vads-u-padding-x--0">
+          <%- include('./partials/main_nav') %>
+            <div class="site-l-wrapper">
+              <!-- <div>
+            <h3 class='text-center'><%= user.userinfo.name%> is <%= JSON.stringify(veteranStatus, null, 2) %></h3>
+          </div> -->
+              <h3>Military Summary</h3>
+              <table>
+                <tr>
+                  <td><b>First Name</b></td>
+                  <td>
+                    <%= veteranStatus.military_summary.first_name%>
+                  </td>
+                  <td><b>Last Name</b></td>
+                  <td>
+                    <%= veteranStatus.military_summary.last_name%>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Active Duty Status</b></td>
+                  <td>
+                    <%= veteranStatus.military_summary.active_duty_status%>
+                  </td>
+                  <td><b>Combat Service Indicator</b></td>
+                  <td>
+                    <%= veteranStatus.military_summary.combat_service_indicator ? 'Yes' : 'No' %>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="25%"><b>Duty Status Code</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.duty_status_code%>
+                  </td>
+                  <td width="25%"><b>Duty Status Text</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.duty_status_text %>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="25%"><b>Total Number of Regular Active Duty Days</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.total_number_of_regular_active_duty_days%>
+                  </td>
+                  <td width="25%"><b>Total Number of Reserve Active Duty Days</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.total_number_of_reserve_active_duty_days %>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="25%"><b>Total Number of Guard Active Duty Days</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.total_number_of_guard_active_duty_days%>
+                  </td>
+                  <td width="25%"><b>Total Number of Training Days</b></td>
+                  <td width="25%">
+                    <%= veteranStatus.military_summary.total_number_of_training_days %>
+                  </td>
+                </tr>
+              </table>
+
+              <h3>Service Infomation</h3>
+              <table>
+                <tr>
+                  <td><b>Type</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].type%>
+                  </td>
+                  <td><b>Branch of Service</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.branch_of_service%>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Service Type</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.service_type%>
+                  </td>
+                  <td><b>Component of Service</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.component_of_service%>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Start Date</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.start_date%>
+                  </td>
+                  <td><b>End Date</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.end_date%>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Pay Grade</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.pay_grade%>
+                  </td>
+                  <td><b>Discharge Status</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.discharge_status%>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Separation Reason</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.separation_reason%>
+                  </td>
+                  <td><b>Service Episode Has Combat Pay</b></td>
+                  <td>
+                    <%= veteranStatus.data[0].attributes.service_episode_has_combat_pay ? 'Yes' : 'No' %>
+                  </td>
+                </tr>
+              </table>
+            </div>
+        </div>
+      </main>
+      <%- include('./partials/footer') %>
+  </body>
+
+</html>
